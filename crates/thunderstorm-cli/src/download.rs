@@ -7,7 +7,7 @@ use flume::{SendError, Sender};
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use rand::Rng;
 use std::{cmp::min, collections::HashSet, fmt::Write, usize};
-use thunderstorm::{
+use thunderstorm_core::{
     client::Client,
     message::{self, MessageError, MessageId},
     peer::{self, Peer},

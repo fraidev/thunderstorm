@@ -954,7 +954,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "thunderstorm"
+name = "thunderstorm-cli"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "flume",
+ "indicatif",
+ "rand",
+ "reqwest",
+ "serde",
+ "serde_bencode",
+ "serde_bytes",
+ "sha1_smol",
+ "thunderstorm-core",
+ "tokio",
+]
+
+[[package]]
+name = "thunderstorm-core"
 version = "0.1.0"
 dependencies = [
  "byteorder",

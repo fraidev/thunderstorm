@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use flume::{Receiver, Sender};
-use thunderstorm::client::Client;
+use thunderstorm_core::client::Client;
 
 use crate::download::Torrent;
 

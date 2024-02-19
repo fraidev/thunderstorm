@@ -129,7 +129,7 @@ pub fn read(length_buf: Vec<u8>, message_buf: Vec<u8>) -> Option<Message> {
         _ => {
             let char_code = &message_buf[0..];
             let id = char_code[0];
-            let payload = message_buf[1..(length) as usize].try_into().unwrap();
+            let payload = message_buf[1..(length) as usize].into();
             let message_id = match id {
                 0 => MessageId::MsgChoke,
                 1 => MessageId::MsgUnchoke,
