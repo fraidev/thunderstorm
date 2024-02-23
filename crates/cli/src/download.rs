@@ -84,10 +84,9 @@ pub async fn download_file(torrent_meata: &TorrentMeta, out_file: Option<String>
         Some(name) => name,
         None => torrent_meata.torrent_file.info.name.clone(),
     };
-
     let mut file = File::create(out_filename).await.unwrap();
     file.write_all(final_buf.as_slice()).await.unwrap();
-    file.sync_all().await.unwrap();
+    file.sync_all().await.unwrap()
 }
 
 async fn download_torrent(torrent: Torrent) -> Vec<u8> {
