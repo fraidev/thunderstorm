@@ -4,3 +4,8 @@ pub mod handshake;
 pub mod message;
 pub mod peer;
 pub mod protocol;
+pub mod torrent;
+pub mod session;
+pub mod file;
+pub mod download;
+pub mod utils;

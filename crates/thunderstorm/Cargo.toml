@@ -9,9 +9,10 @@ path = "src/lib.rs"
 
 [dependencies]
 serde.workspace = true
+tokio.workspace = true
 reqwest = { version = "0.11", features = ["json"] }
-tokio = { version = "1.33.0", features = ["full"] }
 byteorder = "1.4.3"
 serde_bencode = "0.2.3"
 serde_bytes = "0.11.12"
-indicatif = "0.17.7"
+flume = { version = "0.11.0", default-features = false, features = ["async", "select"] }
+sha1_smol = "1.0.0"

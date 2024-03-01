@@ -1,4 +1,5 @@
-use crate::download::Torrent;
+use crate::torrent::Torrent;
+
 
 const BLOCK_SIZE: u32 = 16384;
 

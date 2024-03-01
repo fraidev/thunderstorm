@@ -1,19 +1,18 @@
 use std::sync::Arc;
 
 use flume::{Receiver, Sender};
-use thunderstorm::client::Client;
 
-use crate::download::Torrent;
+use crate::{client::Client, torrent::Torrent};
 
 #[derive(Clone)]
-pub struct ConnectionPool {
+pub struct Session {
     torrent: Torrent,
     max_size: usize,
 }
 
-impl ConnectionPool {
-    pub fn new(torrent: Torrent, max_size: usize) -> ConnectionPool {
-        ConnectionPool { torrent, max_size }
+impl Session {
+    pub fn new(torrent: Torrent, max_size: usize) -> Session {
+        Session { torrent, max_size }
     }
 
     pub async fn connect(&self) -> (Sender<Client>, Receiver<Client>) {

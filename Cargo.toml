@@ -8,6 +8,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
+tokio = { version = "1.33.0", features = ["full"] }
 uuid = { version = "1.1.2", features = ["v4"] }
 thunderstorm = { path = "crates/thunderstorm" }
 lazy_static = "1.4.0"

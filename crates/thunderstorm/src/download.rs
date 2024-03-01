@@ -1,42 +1,12 @@
+use crate::utils;
 use crate::{
-    file::{self, TorrentMeta},
-    pool::ConnectionPool,
-    utils,
-};
-use flume::{SendError, Sender};
-use indicatif::{ProgressBar, ProgressState, ProgressStyle};
-use rand::Rng;
-use std::{cmp::min, collections::HashSet, fmt::Write, usize};
-use thunderstorm::{
     client::Client,
     message::{self, MessageError, MessageId},
-    peer::{self, Peer},
     protocol::ProtocolError,
+    session::Session,
+    torrent::Torrent,
 };
-use tokio::{fs::File, io::AsyncWriteExt};
-
-#[derive(Debug, Clone)]
-pub struct Torrent {
-    pub peers: Vec<Peer>,
-    pub peer_id: [u8; 20],
-    pub info_hash: [u8; 20],
-    pub piece_hashes: Vec<[u8; 20]>,
-    pub piece_length: i64,
-    pub length: i64,
-}
-
-impl Torrent {
-    pub fn new(torrent_meta: &TorrentMeta, peers: Vec<Peer>, peer_id: [u8; 20]) -> Torrent {
-        Torrent {
-            peers,
-            peer_id,
-            info_hash: torrent_meta.info_hash,
-            piece_hashes: torrent_meta.piece_hashes.clone(),
-            piece_length: torrent_meta.torrent_file.info.piece_length,
-            length: torrent_meta.torrent_file.info.length.unwrap(),
-        }
-    }
-}
+use flume::{Receiver, SendError, Sender};
 
 enum DownloadError {
     SendPieceResult(SendError<PieceResult>),
@@ -67,33 +37,9 @@ pub struct State {
     pub buf: Vec<u8>,
 }
 
-pub async fn download_file(torrent_meata: &TorrentMeta, out_file: Option<String>) {
-    let mut rng = rand::prelude::ThreadRng::default();
-    let random_peers: [u8; 20] = (0..20)
-        .map(|_| rng.gen())
-        .collect::<Vec<u8>>()
-        .try_into()
-        .unwrap();
-
-    let url = file::build_tracker_url(torrent_meata, &random_peers, 6881);
-    let peers = peer::request_peers(&url).await.unwrap();
-    let torrent = Torrent::new(torrent_meata, peers, random_peers);
-    let final_buf = download_torrent(torrent).await;
-
-    let out_filename = match out_file {
-        Some(name) => name,
-        None => torrent_meata.torrent_file.info.name.clone(),
-    };
-    let mut file = File::create(out_filename).await.unwrap();
-    file.write_all(final_buf.as_slice()).await.unwrap();
-    file.sync_all().await.unwrap()
-}
-
-async fn download_torrent(torrent: Torrent) -> Vec<u8> {
-    let mut final_buf = vec![0u8; torrent.length as usize];
-
-    let pool = ConnectionPool::new(torrent.clone(), torrent.peers.len());
-    let (pool_tx, pool_rx) = pool.connect().await;
+pub async fn download_torrent(torrent: Torrent) -> Receiver<PieceResult> {
+    let session = Session::new(torrent.clone(), torrent.peers.len());
+    let (session_tx, session_rx) = session.connect().await;
     let (pw_tx, pw_rx) = flume::unbounded::<PieceWork>();
     let (pr_tx, pr_rx) = flume::bounded::<PieceResult>(torrent.piece_hashes.len());
 
@@ -114,11 +60,11 @@ async fn download_torrent(torrent: Torrent) -> Vec<u8> {
 
     tokio::spawn(async move {
         loop {
-            let mut client = pool_rx.recv_async().await.unwrap();
+            let mut client = session_rx.recv_async().await.unwrap();
             let pw = pw_rx.recv_async().await.unwrap();
             let pw_tx = pw_tx.clone();
             let pr_tx = pr_tx.clone();
-            let pool_tx = pool_tx.clone();
+            let session_tx = session_tx.clone();
             tokio::spawn(async move {
                 let task = download_piece(pw, &mut client, &pr_tx);
                 let timeout = tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
@@ -131,36 +77,12 @@ async fn download_torrent(torrent: Torrent) -> Vec<u8> {
                         pw_tx.send(pw).unwrap();
                     }
                 }
-                pool_tx.send(client.clone()).unwrap();
+                session_tx.send(client.clone()).unwrap();
             });
         }
     });
 
-    let total_size = torrent.length as u64;
-    let pb = ProgressBar::new(total_size);
-    pb.set_style(
-        ProgressStyle::with_template(
-            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec},{eta})"
-            ).unwrap().with_key(
-            "eta", 
-            |state: &ProgressState, w: &mut dyn Write
-            | write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
-        ).progress_chars("#>-")
-    );
-
-    let mut done_pieces = HashSet::<usize>::new();
-    while done_pieces.len() < torrent.piece_hashes.len() {
-        let pr = pr_rx.recv_async().await.unwrap();
-
-        let new = min((done_pieces.len() * pr.buf.len()) as u64, total_size);
-        pb.set_position(new);
-        let (start, end) = utils::calculate_bounds_for_piece(torrent.clone(), pr.index as usize);
-        final_buf[start..end].copy_from_slice(pr.buf.as_slice());
-
-        done_pieces.insert(pr.index as usize);
-    }
-
-    final_buf
+    pr_rx
 }
 
 async fn download_piece(
