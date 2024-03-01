@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "thunderstorm"
+name = "Thunderstorm"
 path = "src/main.rs"
 
 [dependencies]
@@ -12,3 +12,4 @@ thunderstorm-core = { workspace = true }
 uuid.workspace = true
 gpui = { git = "https://github.com/zed-industries/zed" }
 gpui_macros = { git = "https://github.com/zed-industries/zed" }
+serde = "1.0.197"

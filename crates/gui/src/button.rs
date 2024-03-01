@@ -1,18 +1,20 @@
-use gpui::{prelude::FluentBuilder, *};
+use gpui::*;
 use gpui_macros::IntoElement;
 
 #[derive(IntoElement)]
 pub struct Button {
     pub base: Div,
     pub(super) disabled: bool,
+    pub text: String,
     on_click: Option<Box<dyn Fn(&mut WindowContext) + 'static>>,
 }
 
 impl Button {
-    pub fn new() -> Self {
+    pub fn new(text: String) -> Self {
         Self {
             on_click: None,
             disabled: false,
+            text,
             base: div(),
         }
     }
@@ -28,7 +30,7 @@ impl RenderOnce for Button {
             .text_color(rgb(0xffffff))
             .justify_center()
             .items_center()
-            .child("Button")
+            .child(self.text)
             .on_mouse_move(|_cx, _event| {
                 // println!("Mouse moved!");
             })
