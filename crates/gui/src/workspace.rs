@@ -31,7 +31,7 @@ pub fn open_torrent_for_paths(paths: Vec<std::path::PathBuf>, cx: &mut gpui::App
     StateModel::update(
         |state, cx| {
             state.inner.update(cx, |s, _| {
-                s.score += 10;
+                s.sthunderstorm += 10;
                 s.pending_files = paths.clone()
             });
         },

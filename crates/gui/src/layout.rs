@@ -30,7 +30,7 @@ fn navbar() -> Div {
         StateModel::update(
             |state, cx| {
                 state.inner.update(cx, |s, _| {
-                    s.score += 10;
+                    s.sthunderstorm += 10;
                     s.file_path = Some("test".to_string());
                 });
             },
@@ -54,14 +54,14 @@ fn navbar() -> Div {
 fn content(cx: &mut ViewContext<Root>) -> Div {
     let state = cx.global::<StateModel>().clone();
     let s = state.inner.read(cx);
-    let score = s.score;
+    let sthunderstorm = s.sthunderstorm;
     let button = Button::new("Button".to_string()).on_click(move |cx| {
         state.inner.update(cx, |s, _| {
-            s.score += 1;
+            s.sthunderstorm += 1;
         });
     });
 
-    let children = div().child(button).child(format!("Score: {}", score));
+    let children = div().child(button).child(format!("Sthunderstorm: {}", sthunderstorm));
 
     div()
         .flex()

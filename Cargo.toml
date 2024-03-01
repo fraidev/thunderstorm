@@ -1,11 +1,16 @@
 [workspace]
 members = [
-    "crates/core",
+    "crates/thunderstorm",
     "crates/cli",
     "crates/gui",
+    "crates/util",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 uuid = { version = "1.1.2", features = ["v4"] }
-thunderstorm-core = { path = "crates/core" }
+thunderstorm = { path = "crates/thunderstorm" }
+lazy_static = "1.4.0"
+serde = { version = "1.0", features = ["derive"] }
+globset = "0.4"
+anyhow = "1.0.80"

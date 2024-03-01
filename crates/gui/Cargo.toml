@@ -1,5 +1,5 @@
 [package]
-name = "thunderstorm-gui"
+name = "gui"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ name = "Thunderstorm"
 path = "src/main.rs"
 
 [dependencies]
-thunderstorm-core = { workspace = true }
+thunderstorm = { workspace = true }
 uuid.workspace = true
 gpui = { git = "https://github.com/zed-industries/zed" }
 gpui_macros = { git = "https://github.com/zed-industries/zed" }

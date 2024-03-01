@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use gpui::{AppContext, Context, Global, Model};
 
 pub struct State {
-    pub score: i32,
+    pub sthunderstorm: i32,
     pub file_path: Option<String>,
     pub pending_files: Vec<PathBuf>,
     pub transfers: Vec<String>,
@@ -20,7 +20,7 @@ impl StateModel {
     pub fn init(cx: &mut AppContext) -> Self {
         let this = Self {
             inner: cx.new_model(|_| State {
-                score: 0,
+                sthunderstorm: 0,
                 file_path: None,
                 pending_files: vec![],
                 transfers: vec![],
