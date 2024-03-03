@@ -53,7 +53,7 @@ pub async fn download_file(torrent_meata: &TorrentMeta, out_file: Option<String>
 
         let new = min((done_pieces.len() * pr.buf.len()) as u64, total_size);
         pb.set_position(new);
-        let (start, end) = utils::calculate_bounds_for_piece(torrent.clone(), pr.index as usize);
+        let (start, end) = utils::calculate_bounds_for_piece(&torrent, pr.index as usize);
         final_buf[start..end].copy_from_slice(pr.buf.as_slice());
 
         done_pieces.insert(pr.index as usize);

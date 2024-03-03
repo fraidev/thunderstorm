@@ -3,7 +3,7 @@ use crate::torrent::Torrent;
 
 const BLOCK_SIZE: u32 = 16384;
 
-pub fn calculate_bounds_for_piece(torrent: Torrent, index: usize) -> (usize, usize) {
+pub fn calculate_bounds_for_piece(torrent: &Torrent, index: usize) -> (usize, usize) {
     let start = index * torrent.piece_length as usize;
     let end = start + torrent.piece_length as usize;
     let torrent_length = torrent.length as usize;
@@ -15,7 +15,7 @@ pub fn calculate_bounds_for_piece(torrent: Torrent, index: usize) -> (usize, usi
     }
 }
 
-pub fn calculate_piece_size(torrent: Torrent, index: usize) -> usize {
+pub fn calculate_piece_size(torrent: &Torrent, index: usize) -> usize {
     let (start, end) = calculate_bounds_for_piece(torrent, index);
     end - start
 }

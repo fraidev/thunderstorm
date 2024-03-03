@@ -45,7 +45,7 @@ pub async fn download_torrent(torrent: Torrent) -> Receiver<PieceResult> {
 
     let pieces_of_work = (0..(torrent.piece_hashes.len()) as u64)
         .map(|index| {
-            let length = utils::calculate_piece_size(torrent.clone(), index as usize);
+            let length = utils::calculate_piece_size(&torrent, index as usize);
             PieceWork {
                 index: index as u32,
                 length: length as u32,

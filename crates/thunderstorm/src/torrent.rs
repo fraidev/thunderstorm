@@ -1,7 +1,7 @@
 use crate::{file::TorrentMeta, peer::Peer};
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Torrent {
     pub peers: Vec<Peer>,
     pub peer_id: [u8; 20],
