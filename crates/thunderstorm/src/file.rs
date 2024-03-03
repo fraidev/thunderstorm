@@ -116,14 +116,14 @@ pub fn url_encode_bytes(content: &[u8]) -> Result<String, Box<dyn Error>> {
     Ok(out)
 }
 
-pub fn build_tracker_url(torrent_meta: &TorrentMeta, peer_id: &[u8], port: u16) -> String {
-    let announce_url = torrent_meta.torrent_file.announce.as_ref().unwrap();
+pub fn build_tracker_url(torrent_meta: &TorrentMeta, peer_id: &[u8], port: u16, tracker_url: &str) -> String {
+    // let announce_url = torrent_meta.torrent_file.announce.as_ref().unwrap();
     let info_hash_encoded = url_encode_bytes(torrent_meta.info_hash.as_ref()).unwrap();
     let peer_id_encoded = url_encode_bytes(peer_id).unwrap();
 
     format!(
         "{}?info_hash={}&peer_id={}&port={}&uploaded=0&downloaded=0&compact=1&left={}",
-        announce_url,
+        tracker_url,
         info_hash_encoded,
         peer_id_encoded,
         port,

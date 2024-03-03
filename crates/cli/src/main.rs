@@ -29,8 +29,28 @@ pub async fn download_file(torrent_meata: &TorrentMeta, out_file: Option<String>
         .try_into()
         .unwrap();
 
-    let url = file::build_tracker_url(torrent_meata, &random_peers, 6881);
+    let trackers = match (
+        &torrent_meata.torrent_file.announce,
+        &torrent_meata.torrent_file.announce_list,
+    ) {
+        (Some(announce), None) => vec![announce.clone()],
+        (Some(announce), Some(announce_list)) => {
+            let mut h = Vec::<String>::from_iter(announce_list.iter().flatten().cloned());
+            if !h.contains(announce) {
+                h.push(announce.clone());
+            }
+            h.into_iter().collect()
+        }
+        (None, Some(announce_list)) => announce_list.clone().into_iter().flatten().collect(),
+        (None, None) => vec![],
+    };
+
+    let tcp_tracker = trackers.iter().find(|t| !t.starts_with("udp://"));
+
+    let url = file::build_tracker_url(torrent_meata, &random_peers, 6881, tcp_tracker.unwrap());
+    println!("Requesting peers from: {}", url);
     let peers = peer::request_peers(&url).await.unwrap();
+
     let torrent = Torrent::new(torrent_meata, peers, random_peers);
     let mut final_buf = vec![0u8; torrent.length as usize];
     let recv = download::download_torrent(torrent.clone()).await;

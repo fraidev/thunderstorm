@@ -19,12 +19,17 @@ impl Session {
         let (sender, receiver) = flume::bounded(self.max_size);
         let mut handles = Vec::with_capacity(self.max_size);
 
-        for i in 0..=(self.max_size - 1) {
+        println!("len of peers: {}", self.torrent.peers.len());
+
+        println!("max_size: {}", self.max_size);
+
+        for i in 0..(self.max_size) {
             let sender = sender.clone();
             let torrent = Arc::from(self.torrent.clone());
             let h = tokio::spawn(async move {
                 let peers = torrent.peers.clone();
                 let peer = peers[i].clone();
+                println!("{:?} Connecting to peer: {:?}", i, peer);
                 let client =
                     Client::connect(peer.clone(), torrent.info_hash, torrent.peer_id, true).await;
 

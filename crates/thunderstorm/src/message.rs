@@ -9,6 +9,10 @@ pub enum MessageId {
     MsgRequest = 6,
     MsgPiece = 7,
     MsgCancel = 8,
+    MsgReject = 16,
+    MsgHashRequest = 21,
+    MsgHashes = 22,
+    MsgHashReject = 23,
 }
 
 #[derive(Debug, Clone, PartialEq)]
