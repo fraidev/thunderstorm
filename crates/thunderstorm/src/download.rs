@@ -59,7 +59,7 @@ pub async fn download_torrent(torrent: Torrent) -> Receiver<PieceResult> {
     }
 
     tokio::spawn(async move {
-        loop {
+        while pr_tx.len() < torrent.piece_hashes.len() {
             let mut client = session_rx.recv_async().await.unwrap();
             let pw = pw_rx.recv_async().await.unwrap();
             let pw_tx = pw_tx.clone();
@@ -149,6 +149,7 @@ async fn download_piece(
         .send_have(pw.index)
         .await
         .map_err(DownloadError::ProtocolError)?;
+
     pr_tx
         .send(PieceResult {
             index: pw.index,

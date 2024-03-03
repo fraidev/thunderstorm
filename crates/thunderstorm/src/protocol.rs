@@ -68,7 +68,7 @@ impl Protocol {
             .read_exact(msg_bytes)
             .await
             .map_err(ProtocolError::Io)?;
-        Ok(message::read(length_buf.to_vec(), msg_bytes.to_vec()))
+        Ok(message::read(length_buf, msg_bytes))
     }
 
     pub async fn send_request(
