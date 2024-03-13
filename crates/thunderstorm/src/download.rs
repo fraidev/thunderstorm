@@ -1,4 +1,4 @@
-use crate::tracker_stream::TrackerStream;
+use crate::tracker_peers::TrackerPeers;
 use crate::utils;
 use crate::{
     client::Client,
@@ -37,56 +37,64 @@ pub struct State {
     pub buf: Vec<u8>,
 }
 
-pub async fn download_torrent(
-    torrent: Torrent,
-    tracker_stream: TrackerStream,
-) -> Receiver<PieceResult> {
-    let client_rx = tracker_stream.connect().await;
-    let (pw_tx, pw_rx) = flume::unbounded::<PieceWork>();
-    let (pr_tx, pr_rx) = flume::bounded::<PieceResult>(torrent.piece_hashes.len());
+pub struct Download {
+    pub tracker_stream: TrackerPeers,
+    pub pr_rx: Receiver<PieceResult>,
+}
 
-    let pieces_of_work = (0..(torrent.piece_hashes.len()) as u64)
-        .map(|index| {
-            let length = utils::calculate_piece_size(&torrent, index as usize);
-            PieceWork {
-                index: index as u32,
-                length: length as u32,
-                hash: torrent.piece_hashes[index as usize],
-            }
-        })
-        .collect::<Vec<PieceWork>>();
+impl Download {
+    pub async fn download_torrent(torrent: Torrent, tracker_stream: TrackerPeers) -> Self {
+        tracker_stream.connect().await;
+        let client_rx = tracker_stream.receiver.clone();
+        let (pw_tx, pw_rx) = flume::unbounded::<PieceWork>();
+        let (pr_tx, pr_rx) = flume::bounded::<PieceResult>(torrent.piece_hashes.len());
 
-    for pw in pieces_of_work {
-        pw_tx.send(pw).unwrap();
-    }
+        let pieces_of_work = (0..(torrent.piece_hashes.len()) as u64)
+            .map(|index| {
+                let length = utils::calculate_piece_size(&torrent, index as usize);
+                PieceWork {
+                    index: index as u32,
+                    length: length as u32,
+                    hash: torrent.piece_hashes[index as usize],
+                }
+            })
+            .collect::<Vec<PieceWork>>();
 
-    tokio::spawn(async move {
-        while pr_tx.len() < torrent.piece_hashes.len() {
-            let mut client = client_rx.recv_async().await.unwrap();
-            let pw_tx = pw_tx.clone();
-            let pr_tx = pr_tx.clone();
-            let pw_rx = pw_rx.clone();
-            tokio::spawn(async move {
-                loop {
-                    let pw = pw_rx.recv_async().await.unwrap();
-                    let task = download_piece(pw, &mut client, &pr_tx);
-                    let timeout =
-                        tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
-                    match timeout {
-                        Ok(Ok(_)) => {}
-                        Ok(Err(_e)) => {
-                            pw_tx.send(pw).unwrap();
-                        }
-                        Err(_e) => {
-                            pw_tx.send(pw).unwrap();
+        for pw in pieces_of_work {
+            pw_tx.send(pw).unwrap();
+        }
+
+        tokio::spawn(async move {
+            while pr_tx.len() < torrent.piece_hashes.len() {
+                let mut client = client_rx.recv_async().await.unwrap();
+                let pw_tx = pw_tx.clone();
+                let pr_tx = pr_tx.clone();
+                let pw_rx = pw_rx.clone();
+                tokio::spawn(async move {
+                    loop {
+                        let pw = pw_rx.recv_async().await.unwrap();
+                        let task = download_piece(pw, &mut client, &pr_tx);
+                        let timeout =
+                            tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
+                        match timeout {
+                            Ok(Ok(_)) => {}
+                            Ok(Err(_e)) => {
+                                pw_tx.send(pw).unwrap();
+                            }
+                            Err(_e) => {
+                                pw_tx.send(pw).unwrap();
+                            }
                         }
                     }
-                }
-            });
-        }
-    });
+                });
+            }
+        });
 
-    pr_rx
+        Self {
+            tracker_stream,
+            pr_rx,
+        }
+    }
 }
 
 async fn download_piece(

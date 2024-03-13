@@ -4,10 +4,10 @@ use std::{cmp::min, collections::HashSet, fmt::Write};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use thunderstorm::{
-    download,
+    download::Download,
     file::{self, TorrentMeta},
     torrent::Torrent,
-    tracker_stream::TrackerStream,
+    tracker_peers::TrackerPeers,
     utils,
 };
 
@@ -32,32 +32,38 @@ pub async fn download_file(torrent_meta: TorrentMeta, out_file: Option<String>) 
     let torrent = Torrent::new(&torrent_meta);
 
     //TODO: move it to a download manager state
-    let tracker_stream = TrackerStream::new(torrent_meta, 15, random_peers);
+    let tracker_stream = TrackerPeers::new(torrent_meta, 15, random_peers);
 
     //TODO: I think this is really bad
     let mut final_buf = vec![0u8; torrent.length as usize];
 
     //TODO: return more than just the buffer
-    let recv = download::download_torrent(torrent.clone(), tracker_stream).await;
+    let downloader = Download::download_torrent(torrent.clone(), tracker_stream.clone()).await;
 
     let total_size = torrent.length as u64;
     let pb = ProgressBar::new(total_size);
+
+    // let len_peers = tracker_stream.peers.len().clone();
     pb.set_style(
         ProgressStyle::with_template(
-            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec},{eta})"
+            "{spinner:.green} [{elapsed_precise}][{msg}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec},{eta})"
             ).unwrap().with_key(
             "eta",
-            |state: &ProgressState, w: &mut dyn Write
-            | write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+            |state: &ProgressState, 
+                w: &mut dyn Write | write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
         ).progress_chars("#>-")
     );
 
     let mut done_pieces = HashSet::<usize>::new();
     while done_pieces.len() < torrent.piece_hashes.len() {
-        let pr = recv.recv_async().await.unwrap();
+        let pr = downloader.pr_rx.recv_async().await.unwrap();
 
         let new = min((done_pieces.len() * pr.buf.len()) as u64, total_size);
         pb.set_position(new);
+
+        let peer_len = tracker_stream.peers.len();
+        pb.set_message(peer_len.to_string());
+
         let (start, end) = utils::calculate_bounds_for_piece(&torrent, pr.index as usize);
         final_buf[start..end].copy_from_slice(pr.buf.as_slice());
 
