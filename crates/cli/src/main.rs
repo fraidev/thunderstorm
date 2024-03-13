@@ -1,5 +1,4 @@
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
-use rand::Rng;
 use std::{cmp::min, collections::HashSet, fmt::Write};
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -22,12 +21,7 @@ async fn main() {
 }
 
 pub async fn download_file(torrent_meta: TorrentMeta, out_file: Option<String>) {
-    let mut rng = rand::prelude::ThreadRng::default();
-    let random_peers: [u8; 20] = (0..20)
-        .map(|_| rng.gen())
-        .collect::<Vec<u8>>()
-        .try_into()
-        .unwrap();
+    let random_peers = utils::generate_peer_id();
 
     let torrent = Torrent::new(&torrent_meta);
 
@@ -49,8 +43,7 @@ pub async fn download_file(torrent_meta: TorrentMeta, out_file: Option<String>) 
             "{spinner:.green} [{elapsed_precise}][{msg}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec},{eta})"
             ).unwrap().with_key(
             "eta",
-            |state: &ProgressState, 
-                w: &mut dyn Write | write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+            | state: &ProgressState, w: &mut dyn Write | write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
         ).progress_chars("#>-")
     );
 

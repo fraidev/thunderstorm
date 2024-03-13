@@ -1,5 +1,5 @@
 use crate::torrent::Torrent;
-
+use rand::Rng;
 
 const BLOCK_SIZE: u32 = 16384;
 
@@ -32,4 +32,13 @@ pub fn check_integrity(hash: &[u8], buf: &[u8]) -> bool {
     hasher.update(buf);
     let result = hasher.digest().bytes();
     result == hash
+}
+
+pub fn generate_peer_id() -> [u8; 20] {
+    let mut rng = rand::prelude::ThreadRng::default();
+    (0..20)
+        .map(|_| rng.gen())
+        .collect::<Vec<u8>>()
+        .try_into()
+        .unwrap()
 }

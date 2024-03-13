@@ -10,5 +10,4 @@ path = "src/main.rs"
 [dependencies]
 tokio.workspace = true
 thunderstorm.workspace = true
-rand = "0.8.5"
 indicatif = "0.17.7"

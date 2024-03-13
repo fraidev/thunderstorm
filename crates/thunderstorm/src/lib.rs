@@ -1,12 +1,12 @@
 pub mod bitfield;
 pub mod client;
+pub mod download;
+pub mod file;
 pub mod handshake;
 pub mod message;
 pub mod peer;
-pub mod torrent;
-pub mod file;
-pub mod download;
-pub mod utils;
 pub mod protocol;
 pub mod protocol_udp;
+pub mod torrent;
 pub mod tracker_peers;
+pub mod utils;

@@ -57,7 +57,6 @@ impl TrackerPeers {
                         let peers = peers.clone();
                         let peer = peer.clone();
                         tokio::spawn(async move {
-
                             //TODO: create peer client with interface that can disconnect it
                             let client =
                                 Client::connect(peer.clone(), info_hash, peer_id, true).await;

@@ -61,7 +61,9 @@ fn content(cx: &mut ViewContext<Root>) -> Div {
         });
     });
 
-    let children = div().child(button).child(format!("Sthunderstorm: {}", sthunderstorm));
+    let children = div()
+        .child(button)
+        .child(format!("Sthunderstorm: {}", sthunderstorm));
 
     div()
         .flex()
