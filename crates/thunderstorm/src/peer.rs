@@ -1,37 +1,28 @@
-use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
-use serde_bencode::de;
 use serde_bytes::ByteBuf;
 
-#[derive(Debug)]
-pub enum ErrorPeers {
-    ReicevedEmptyPeers,
-    GetRequestError(Error),
-    EncodingError(serde_bencode::Error),
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Eq, Hash)]
 pub struct Peer {
     pub ip: String,
     pub port: u16,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-struct BencodeResponse {
+pub struct BencodeResponse {
     pub peers: ByteBuf,
     pub peers6: ByteBuf,
+    pub interval: u64,
 }
 
-impl TryInto<Vec<Peer>> for BencodeResponse {
-    type Error = ErrorPeers;
-    fn try_into(self) -> Result<Vec<Peer>, Self::Error> {
+impl BencodeResponse {
+    pub fn get_peers(self) -> anyhow::Result<Vec<Peer>> {
         // TODO: This is a bit of a mess
         let peers_bin = self.peers;
         let peer_size = 6;
         let peers_bin_length = peers_bin.len();
         let num_peers = peers_bin_length / peer_size;
         if peers_bin_length % peer_size != 0 {
-            return Err(ErrorPeers::ReicevedEmptyPeers);
+            anyhow::bail!("Received empty peers");
         }
 
         let peers_bin6 = self.peers6;
@@ -39,7 +30,7 @@ impl TryInto<Vec<Peer>> for BencodeResponse {
         let peers_bin_length6 = peers_bin6.len();
         let num_peers6 = peers_bin_length6 / peer_size6;
         if peers_bin_length6 % peer_size6 != 0 {
-            return Err(ErrorPeers::ReicevedEmptyPeers);
+            anyhow::bail!("Received empty peers");
         }
 
         let mut peers = Vec::new();
@@ -90,23 +81,4 @@ impl TryInto<Vec<Peer>> for BencodeResponse {
 
         Ok(peers)
     }
-}
-
-pub async fn request_peers(uri: &str) -> Result<Vec<Peer>, ErrorPeers> {
-    let client = Client::new();
-    let response = client
-        .get(uri)
-        .send()
-        .await
-        .map_err(ErrorPeers::GetRequestError)?;
-    let body_bytes = response
-        .bytes()
-        .await
-        .map_err(ErrorPeers::GetRequestError)?;
-
-    println!("body_bytes: {:?}", body_bytes);
-
-    let tracker_bencode_decode =
-        de::from_bytes::<BencodeResponse>(&body_bytes).map_err(ErrorPeers::EncodingError)?;
-    tracker_bencode_decode.try_into()
 }

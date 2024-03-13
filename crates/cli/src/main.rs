@@ -6,8 +6,8 @@ use tokio::{fs::File, io::AsyncWriteExt};
 use thunderstorm::{
     download,
     file::{self, TorrentMeta},
-    peer,
     torrent::Torrent,
+    tracker_stream::TrackerStream,
     utils,
 };
 
@@ -18,10 +18,10 @@ async fn main() {
 
     let torrent_meta = file::from_filename(&filename).unwrap();
 
-    download_file(&torrent_meta, output).await
+    download_file(torrent_meta, output).await
 }
 
-pub async fn download_file(torrent_meata: &TorrentMeta, out_file: Option<String>) {
+pub async fn download_file(torrent_meta: TorrentMeta, out_file: Option<String>) {
     let mut rng = rand::prelude::ThreadRng::default();
     let random_peers: [u8; 20] = (0..20)
         .map(|_| rng.gen())
@@ -29,31 +29,16 @@ pub async fn download_file(torrent_meata: &TorrentMeta, out_file: Option<String>
         .try_into()
         .unwrap();
 
-    let trackers = match (
-        &torrent_meata.torrent_file.announce,
-        &torrent_meata.torrent_file.announce_list,
-    ) {
-        (Some(announce), None) => vec![announce.clone()],
-        (Some(announce), Some(announce_list)) => {
-            let mut h = Vec::<String>::from_iter(announce_list.iter().flatten().cloned());
-            if !h.contains(announce) {
-                h.push(announce.clone());
-            }
-            h.into_iter().collect()
-        }
-        (None, Some(announce_list)) => announce_list.clone().into_iter().flatten().collect(),
-        (None, None) => vec![],
-    };
+    let torrent = Torrent::new(&torrent_meta);
 
-    let tcp_tracker = trackers.iter().find(|t| !t.starts_with("udp://"));
+    //TODO: move it to a download manager state
+    let tracker_stream = TrackerStream::new(torrent_meta, 15, random_peers);
 
-    let url = file::build_tracker_url(torrent_meata, &random_peers, 6881, tcp_tracker.unwrap());
-    println!("Requesting peers from: {}", url);
-    let peers = peer::request_peers(&url).await.unwrap();
-
-    let torrent = Torrent::new(torrent_meata, peers, random_peers);
+    //TODO: I think this is really bad
     let mut final_buf = vec![0u8; torrent.length as usize];
-    let recv = download::download_torrent(torrent.clone()).await;
+
+    //TODO: return more than just the buffer
+    let recv = download::download_torrent(torrent.clone(), tracker_stream).await;
 
     let total_size = torrent.length as u64;
     let pb = ProgressBar::new(total_size);
@@ -81,7 +66,8 @@ pub async fn download_file(torrent_meata: &TorrentMeta, out_file: Option<String>
 
     let out_filename = match out_file {
         Some(name) => name,
-        None => torrent_meata.torrent_file.info.name.clone(),
+        // None => torrent_meta.torrent_file.info.name.clone(),
+        None => "output".to_string(),
     };
     let mut file = File::create(out_filename).await.unwrap();
     file.write_all(final_buf.as_slice()).await.unwrap();

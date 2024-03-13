@@ -1,9 +1,9 @@
+use crate::tracker_stream::TrackerStream;
 use crate::utils;
 use crate::{
     client::Client,
     message::{self, MessageError, MessageId},
     protocol::ProtocolError,
-    session::Session,
     torrent::Torrent,
 };
 use flume::{Receiver, SendError, Sender};
@@ -37,9 +37,11 @@ pub struct State {
     pub buf: Vec<u8>,
 }
 
-pub async fn download_torrent(torrent: Torrent) -> Receiver<PieceResult> {
-    let session = Session::new(torrent.clone(), torrent.peers.len());
-    let (session_tx, session_rx) = session.connect().await;
+pub async fn download_torrent(
+    torrent: Torrent,
+    tracker_stream: TrackerStream,
+) -> Receiver<PieceResult> {
+    let client_rx = tracker_stream.connect().await;
     let (pw_tx, pw_rx) = flume::unbounded::<PieceWork>();
     let (pr_tx, pr_rx) = flume::bounded::<PieceResult>(torrent.piece_hashes.len());
 
@@ -60,24 +62,26 @@ pub async fn download_torrent(torrent: Torrent) -> Receiver<PieceResult> {
 
     tokio::spawn(async move {
         while pr_tx.len() < torrent.piece_hashes.len() {
-            let mut client = session_rx.recv_async().await.unwrap();
-            let pw = pw_rx.recv_async().await.unwrap();
+            let mut client = client_rx.recv_async().await.unwrap();
             let pw_tx = pw_tx.clone();
             let pr_tx = pr_tx.clone();
-            let session_tx = session_tx.clone();
+            let pw_rx = pw_rx.clone();
             tokio::spawn(async move {
-                let task = download_piece(pw, &mut client, &pr_tx);
-                let timeout = tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
-                match timeout {
-                    Ok(Ok(_)) => {}
-                    Ok(Err(_e)) => {
-                        pw_tx.send(pw).unwrap();
-                    }
-                    Err(_e) => {
-                        pw_tx.send(pw).unwrap();
+                loop {
+                    let pw = pw_rx.recv_async().await.unwrap();
+                    let task = download_piece(pw, &mut client, &pr_tx);
+                    let timeout =
+                        tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
+                    match timeout {
+                        Ok(Ok(_)) => {}
+                        Ok(Err(_e)) => {
+                            pw_tx.send(pw).unwrap();
+                        }
+                        Err(_e) => {
+                            pw_tx.send(pw).unwrap();
+                        }
                     }
                 }
-                session_tx.send(client.clone()).unwrap();
             });
         }
     });

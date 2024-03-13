@@ -6,10 +6,10 @@ use serde_bytes::ByteBuf;
 use std::fmt::Write;
 use std::{error::Error, io::Read};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Node(String, i64);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct File {
     pub path: Vec<String>,
     pub length: i64,
@@ -17,7 +17,7 @@ pub struct File {
     pub md5sum: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Info {
     pub name: String,
     pub pieces: ByteBuf,
@@ -38,7 +38,7 @@ pub struct Info {
     pub root_hash: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TorrentFile {
     pub info: Info,
     #[serde(default)]
@@ -62,7 +62,7 @@ pub struct TorrentFile {
     pub created_by: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TorrentMeta {
     pub torrent_file: TorrentFile,
     pub info_hash: [u8; 20],
