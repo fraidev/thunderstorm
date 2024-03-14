@@ -80,19 +80,19 @@ impl Download {
 
                 let future = async move {
                     // loop {
-                    let mut client = client.clone().unwrap();
-                    let pw = pw_rx.recv_async().await.unwrap();
-                    let task = download_piece(pw, &mut client, &pr_tx);
-                    let timeout =
-                        tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
-                    match timeout {
-                        Ok(Ok(_)) => {}
-                        _ => {
-                            pw_tx.send(pw).unwrap();
+                        let mut client = client.clone().unwrap();
+                        let pw = pw_rx.recv_async().await.unwrap();
+                        let task = download_piece(pw, &mut client, &pr_tx);
+                        let timeout =
+                            tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
+                        match timeout {
+                            Ok(Ok(_)) => {}
+                            _ => {
+                                pw_tx.send_async(pw).await.unwrap();
+                            }
                         }
-                    }
 
-                    client_tx.send(client).unwrap();
+                        client_tx.send_async(client).await.unwrap();
                     // }
                 };
 

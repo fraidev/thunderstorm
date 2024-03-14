@@ -74,20 +74,20 @@ impl TrackerPeers {
                     let peers = peers.clone();
                     let peer = peer.clone();
 
-                    // let h = utils::spawn(async move {
-                    //TODO: create peer client with interface that can disconnect it
-                    let client_future = Client::connect(peer.clone(), info_hash, peer_id, true);
+                    tokio::spawn(async move {
+                        //TODO: create peer client with interface that can disconnect it
+                        let client_future = Client::connect(peer.clone(), info_hash, peer_id, true);
 
-                    let client =
-                        tokio::time::timeout(std::time::Duration::from_secs(5), client_future)
-                            .await;
-                    if let Ok(Ok(client)) = client {
-                        let s = sender.send(client.clone());
-                        if s.is_ok() {
-                            peers.insert(peer, client);
+                        let client =
+                            tokio::time::timeout(std::time::Duration::from_secs(5), client_future)
+                                .await;
+                        if let Ok(Ok(client)) = client {
+                            let s = sender.send_async(client.clone()).await;
+                            if s.is_ok() {
+                                peers.insert(peer, client);
+                            }
                         }
-                    }
-                    // });
+                    });
                 }
                 //sleep interval
                 tokio::time::sleep(std::time::Duration::from_millis(request_peers_res.interval))
