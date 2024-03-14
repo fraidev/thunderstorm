@@ -11,3 +11,6 @@ path = "src/main.rs"
 tokio.workspace = true
 thunderstorm.workspace = true
 indicatif = "0.17.7"
+console-subscriber.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
