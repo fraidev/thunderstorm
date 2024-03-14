@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::tracker_peers::TrackerPeers;
 use crate::utils;
 use crate::{
@@ -72,27 +74,28 @@ impl Download {
                 let pr_tx = pr_tx.clone();
                 let pw_rx = pw_rx.clone();
                 let client = client_rx.recv_async().await;
-                let client_tx = client_tx.clone();
-
                 if client.is_err() {
                     continue;
                 }
+                // let mut client = Arc::new(client.unwrap());
+                let client_tx = client_tx.clone();
 
                 let future = async move {
                     // loop {
-                        let mut client = client.clone().unwrap();
-                        let pw = pw_rx.recv_async().await.unwrap();
-                        let task = download_piece(pw, &mut client, &pr_tx);
-                        let timeout =
-                            tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
-                        match timeout {
-                            Ok(Ok(_)) => {}
-                            _ => {
-                                pw_tx.send_async(pw).await.unwrap();
-                            }
+                    // let mut client = client.clone().unwrap();
+                    let mut client = client.unwrap();
+                    let pw = pw_rx.recv_async().await.unwrap();
+                    let task = download_piece(pw, &mut client, &pr_tx);
+                    let timeout =
+                        tokio::time::timeout(std::time::Duration::from_secs(10), task).await;
+                    match timeout {
+                        Ok(Ok(_)) => {}
+                        _ => {
+                            pw_tx.send_async(pw).await.unwrap();
                         }
+                    }
 
-                        client_tx.send_async(client).await.unwrap();
+                    client_tx.send_async(client).await.unwrap();
                     // }
                 };
 
@@ -108,6 +111,7 @@ impl Download {
 }
 
 async fn download_piece(
+    // stream: &mut TcpStream,
     pw: PieceWork,
     client: &mut Client,
     pr_tx: &Sender<PieceResult>,
@@ -127,7 +131,7 @@ async fn download_piece(
             while state.requested < pw.length {
                 client
                     .protocol
-                    .send_request(pw.index, state.requested, block_size)
+                    .send_request(&mut client.stream, pw.index, state.requested, block_size)
                     .await
                     .map_err(DownloadError::ProtocolError)?;
                 state.requested += block_size;
@@ -136,7 +140,7 @@ async fn download_piece(
 
         let msg_opt = client
             .protocol
-            .read()
+            .read(&mut client.stream)
             .await
             .map_err(DownloadError::ProtocolError)?;
 
@@ -168,7 +172,7 @@ async fn download_piece(
 
     client
         .protocol
-        .send_have(pw.index)
+        .send_have(&mut client.stream, pw.index)
         .await
         .map_err(DownloadError::ProtocolError)?;
 

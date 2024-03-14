@@ -14,7 +14,7 @@ pub struct TrackerPeers {
     peer_id: [u8; 20],
     pub sender: flume::Sender<Client>,
     pub receiver: flume::Receiver<Client>,
-    pub peers: Arc<DashMap<Peer, Client>>,
+    pub peers: Arc<DashMap<Peer, String>>,
 }
 
 impl TrackerPeers {
@@ -82,9 +82,9 @@ impl TrackerPeers {
                             tokio::time::timeout(std::time::Duration::from_secs(5), client_future)
                                 .await;
                         if let Ok(Ok(client)) = client {
-                            let s = sender.send_async(client.clone()).await;
+                            let s = sender.send_async(client).await;
                             if s.is_ok() {
-                                peers.insert(peer, client);
+                                peers.insert(peer, String::from("connected"));
                             }
                         }
                     });
