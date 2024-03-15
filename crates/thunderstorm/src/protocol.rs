@@ -2,11 +2,9 @@ use crate::handshake::{Handshake, HandshakeError};
 use crate::message;
 use crate::{message::Message, peer::Peer};
 use byteorder::{BigEndian, ByteOrder};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::Mutex;
 use tokio::time::error::Elapsed;
 
 const HANDSHAKE_TIMEOUT: u64 = 3;
@@ -41,8 +39,7 @@ impl Protocol {
         })
     }
 
-    pub async fn read(&self, 
-        stream: &mut TcpStream) -> Result<Option<Message>, ProtocolError> {
+    pub async fn read(&self, stream: &mut TcpStream) -> Result<Option<Message>, ProtocolError> {
         let length_buf = &mut [0u8; 4];
         stream
             .read_exact(length_buf)

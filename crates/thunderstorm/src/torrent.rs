@@ -1,4 +1,4 @@
-use crate::{file::TorrentMeta, peer::Peer};
+use crate::file::TorrentMeta;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Torrent {

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::tracker_peers::TrackerPeers;
 use crate::utils;
 use crate::{
@@ -68,8 +66,7 @@ impl Download {
         }
 
         tokio::spawn(async move {
-            // while pr_tx.len() < torrent.piece_hashes.len() {
-            loop {
+            while pr_tx.len() < torrent.piece_hashes.len() {
                 let pw_tx = pw_tx.clone();
                 let pr_tx = pr_tx.clone();
                 let pw_rx = pw_rx.clone();
@@ -77,12 +74,9 @@ impl Download {
                 if client.is_err() {
                     continue;
                 }
-                // let mut client = Arc::new(client.unwrap());
                 let client_tx = client_tx.clone();
 
                 let future = async move {
-                    // loop {
-                    // let mut client = client.clone().unwrap();
                     let mut client = client.unwrap();
                     let pw = pw_rx.recv_async().await.unwrap();
                     let task = download_piece(pw, &mut client, &pr_tx);
@@ -96,7 +90,6 @@ impl Download {
                     }
 
                     client_tx.send_async(client).await.unwrap();
-                    // }
                 };
 
                 tokio::spawn(future);
@@ -111,7 +104,6 @@ impl Download {
 }
 
 async fn download_piece(
-    // stream: &mut TcpStream,
     pw: PieceWork,
     client: &mut Client,
     pr_tx: &Sender<PieceResult>,

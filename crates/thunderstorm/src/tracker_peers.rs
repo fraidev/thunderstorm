@@ -35,65 +35,67 @@ impl TrackerPeers {
 
         let tcp_trackers = all_trackers(&self.torrent_meta.clone())
             .into_iter()
-            // .filter(|t| !t.starts_with("udp://"))
-            .find(|t| !t.starts_with("udp://"));
+            .filter(|t| !t.starts_with("udp://"));
 
         //TODO: support udp trackers
-        // for tracker in tcp_trackers {
-        let tracker = tcp_trackers.unwrap();
-        let sender = self.sender.clone();
-        let peers = self.peers.clone();
-        let torrent_meta = self.torrent_meta.clone();
-        tokio::spawn(async move {
-            loop {
-                let url = file::build_tracker_url(&torrent_meta, &peer_id, 6881, &tracker);
-                let sender = sender.clone();
-
-                let request_peers_res_fut = request_peers(&url).await;
-                if request_peers_res_fut.is_err() {
-                    // return;
-                    continue;
-                }
-
-                let request_peers_res = request_peers_res_fut.unwrap();
-
-                let new_peers = request_peers_res.clone().get_peers();
-
-                if new_peers.is_err() {
-                    // return;
-                    continue;
-                }
-
-                for peer in new_peers.unwrap() {
+        for tracker in tcp_trackers {
+            // let tracker = tcp_trackers.unwrap();
+            let sender = self.sender.clone();
+            let peers = self.peers.clone();
+            let torrent_meta = self.torrent_meta.clone();
+            tokio::spawn(async move {
+                loop {
+                    let url = file::build_tracker_url(&torrent_meta, &peer_id, 6881, &tracker);
                     let sender = sender.clone();
 
-                    if peers.contains_key(&peer) {
+                    let request_peers_res_fut = request_peers(&url).await;
+                    if request_peers_res_fut.is_err() {
+                        // return;
                         continue;
                     }
 
-                    let peers = peers.clone();
-                    let peer = peer.clone();
+                    let request_peers_res = request_peers_res_fut.unwrap();
 
-                    tokio::spawn(async move {
-                        //TODO: create peer client with interface that can disconnect it
-                        let client_future = Client::connect(peer.clone(), info_hash, peer_id, true);
+                    let new_peers = request_peers_res.clone().get_peers();
 
-                        let client =
-                            tokio::time::timeout(std::time::Duration::from_secs(5), client_future)
-                                .await;
-                        if let Ok(Ok(client)) = client {
-                            let s = sender.send_async(client).await;
-                            if s.is_ok() {
-                                peers.insert(peer, String::from("connected"));
-                            }
+                    if new_peers.is_err() {
+                        continue;
+                    }
+
+                    for peer in new_peers.unwrap() {
+                        let sender = sender.clone();
+
+                        if peers.contains_key(&peer) {
+                            continue;
                         }
-                    });
+
+                        let peers = peers.clone();
+                        let peer = peer.clone();
+
+                        tokio::spawn(async move {
+                            //TODO: create peer client with interface that can disconnect it
+                            let client_future =
+                                Client::connect(peer.clone(), info_hash, peer_id, true);
+
+                            let client = tokio::time::timeout(
+                                std::time::Duration::from_secs(5),
+                                client_future,
+                            )
+                            .await;
+                            if let Ok(Ok(client)) = client {
+                                let s = sender.send_async(client).await;
+                                if s.is_ok() {
+                                    peers.insert(peer, String::from("connected"));
+                                }
+                            }
+                        });
+                    }
+                    //sleep interval
+                    tokio::time::sleep(std::time::Duration::from_millis(request_peers_res.interval))
+                        .await
                 }
-                //sleep interval
-                tokio::time::sleep(std::time::Duration::from_millis(request_peers_res.interval))
-                    .await
-            }
-        });
+            });
+        }
     }
 }
 
