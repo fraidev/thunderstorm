@@ -2,11 +2,9 @@ use crate::handshake::{Handshake, HandshakeError};
 use crate::message;
 use crate::{message::Message, peer::Peer};
 use byteorder::{BigEndian, ByteOrder};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::Mutex;
 use tokio::time::error::Elapsed;
 
 const HANDSHAKE_TIMEOUT: u64 = 3;
@@ -23,7 +21,6 @@ pub enum ProtocolError {
 
 #[derive(Debug, Clone)]
 pub struct Protocol {
-    pub stream: Arc<Mutex<TcpStream>>,
     pub peer: Peer,
     pub info_hash: [u8; 20],
     pub peer_id: [u8; 20],
@@ -35,27 +32,15 @@ impl Protocol {
         info_hash: [u8; 20],
         peer_id: [u8; 20],
     ) -> Result<Self, ProtocolError> {
-        let func = async {
-            let addr = format!("{}:{}", peer.ip, peer.port);
-            let stream_raw = TcpStream::connect(addr).await.map_err(ProtocolError::Io)?;
-            let stream = Arc::new(Mutex::new(stream_raw));
-            Ok(Self {
-                stream,
-                peer,
-                info_hash,
-                peer_id,
-            })
-        };
-        match tokio::time::timeout(Duration::from_secs(6), func).await {
-            Ok(Ok(b)) => Ok(b),
-            Ok(Err(e)) => Err(e),
-            Err(e) => Err(ProtocolError::Timeout(e)),
-        }
+        Ok(Self {
+            peer,
+            info_hash,
+            peer_id,
+        })
     }
 
-    pub async fn read(&self) -> Result<Option<Message>, ProtocolError> {
+    pub async fn read(&self, stream: &mut TcpStream) -> Result<Option<Message>, ProtocolError> {
         let length_buf = &mut [0u8; 4];
-        let mut stream = self.stream.lock().await;
         stream
             .read_exact(length_buf)
             .await
@@ -68,16 +53,16 @@ impl Protocol {
             .read_exact(msg_bytes)
             .await
             .map_err(ProtocolError::Io)?;
-        Ok(message::read(length_buf.to_vec(), msg_bytes.to_vec()))
+        Ok(message::read(length_buf, msg_bytes))
     }
 
     pub async fn send_request(
         &self,
+        stream: &mut TcpStream,
         index: u32,
         start: u32,
         length: u32,
     ) -> Result<(), ProtocolError> {
-        let mut stream = self.stream.lock().await;
         let msg = message::format_request(index, start, length);
         let msg_bytes = message::serialize(Some(msg));
         stream
@@ -86,8 +71,7 @@ impl Protocol {
             .map_err(ProtocolError::Io)
     }
 
-    pub async fn send_interested(&self) -> Result<(), ProtocolError> {
-        let mut stream = self.stream.lock().await;
+    pub async fn send_interested(&self, stream: &mut TcpStream) -> Result<(), ProtocolError> {
         let msg = message::Message {
             id: message::MessageId::MsgInterested,
             payload: vec![],
@@ -99,8 +83,7 @@ impl Protocol {
             .map_err(ProtocolError::Io)
     }
 
-    pub async fn send_not_interested(&self) -> Result<(), ProtocolError> {
-        let mut stream = self.stream.lock().await;
+    pub async fn send_not_interested(&self, stream: &mut TcpStream) -> Result<(), ProtocolError> {
         let msg = message::Message {
             id: message::MessageId::MsgNotInterested,
             payload: vec![],
@@ -112,8 +95,7 @@ impl Protocol {
             .map_err(ProtocolError::Io)
     }
 
-    pub async fn send_unchoke(&self) -> Result<(), ProtocolError> {
-        let mut stream = self.stream.lock().await;
+    pub async fn send_unchoke(&self, stream: &mut TcpStream) -> Result<(), ProtocolError> {
         let msg = message::Message {
             id: message::MessageId::MsgUnchoke,
             payload: vec![],
@@ -125,8 +107,7 @@ impl Protocol {
             .map_err(ProtocolError::Io)
     }
 
-    pub async fn send_have(&self, index: u32) -> Result<(), ProtocolError> {
-        let mut stream = self.stream.lock().await;
+    pub async fn send_have(&self, stream: &mut TcpStream, index: u32) -> Result<(), ProtocolError> {
         let msg = message::format_have(index);
         let msg_bytes = message::serialize(Some(msg));
         stream
@@ -135,9 +116,11 @@ impl Protocol {
             .map_err(ProtocolError::Io)
     }
 
-    pub async fn complete_handshake(&self) -> Result<Handshake, ProtocolError> {
+    pub async fn complete_handshake(
+        &self,
+        stream: &mut TcpStream,
+    ) -> Result<Handshake, ProtocolError> {
         let timeout = tokio::time::timeout(Duration::from_secs(HANDSHAKE_TIMEOUT), async {
-            let mut stream = self.stream.lock().await;
             let handshake = Handshake::new(self.info_hash, self.peer_id);
             let handshake_bytes = handshake.serialize();
             stream
@@ -174,9 +157,9 @@ impl Protocol {
         }
     }
 
-    pub async fn recv_bitfield(&self) -> Result<Vec<u8>, ProtocolError> {
+    pub async fn recv_bitfield(&self, stream: &mut TcpStream) -> Result<Vec<u8>, ProtocolError> {
         let func = async {
-            match self.read().await? {
+            match self.read(stream).await? {
                 None => Err(ProtocolError::MessageIsNone),
                 Some(msg) => {
                     if msg.id != message::MessageId::MsgBitfield {

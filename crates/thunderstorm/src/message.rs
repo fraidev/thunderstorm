@@ -9,6 +9,10 @@ pub enum MessageId {
     MsgRequest = 6,
     MsgPiece = 7,
     MsgCancel = 8,
+    MsgReject = 16,
+    MsgHashRequest = 21,
+    MsgHashes = 22,
+    MsgHashReject = 23,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -122,7 +126,7 @@ pub fn serialize(msg: Option<Message>) -> Vec<u8> {
     }
 }
 
-pub fn read(length_buf: Vec<u8>, message_buf: Vec<u8>) -> Option<Message> {
+pub fn read(length_buf: &[u8], message_buf: &[u8]) -> Option<Message> {
     let length = u32::from_be_bytes(length_buf.try_into().unwrap());
     match length {
         0 => None,
@@ -232,7 +236,7 @@ mod tests {
             id: MessageId::MsgHave,
             payload: vec![0x00, 0x00, 0x00, 0x04],
         };
-        let result = read(length_buf, message_buf);
+        let result = read(&length_buf, &message_buf);
         assert_eq!(result, Some(expected));
     }
 }

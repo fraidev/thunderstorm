@@ -1,0 +1,16 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cli"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true
+thunderstorm.workspace = true
+indicatif = "0.17.7"
+console-subscriber.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

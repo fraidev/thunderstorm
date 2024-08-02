@@ -6,10 +6,10 @@ use serde_bytes::ByteBuf;
 use std::fmt::Write;
 use std::{error::Error, io::Read};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Node(String, i64);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct File {
     pub path: Vec<String>,
     pub length: i64,
@@ -17,7 +17,7 @@ pub struct File {
     pub md5sum: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Info {
     pub name: String,
     pub pieces: ByteBuf,
@@ -38,7 +38,7 @@ pub struct Info {
     pub root_hash: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TorrentFile {
     pub info: Info,
     #[serde(default)]
@@ -62,7 +62,7 @@ pub struct TorrentFile {
     pub created_by: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TorrentMeta {
     pub torrent_file: TorrentFile,
     pub info_hash: [u8; 20],
@@ -116,14 +116,19 @@ pub fn url_encode_bytes(content: &[u8]) -> Result<String, Box<dyn Error>> {
     Ok(out)
 }
 
-pub fn build_tracker_url(torrent_meta: &TorrentMeta, peer_id: &[u8], port: u16) -> String {
-    let announce_url = torrent_meta.torrent_file.announce.as_ref().unwrap();
+pub fn build_tracker_url(
+    torrent_meta: &TorrentMeta,
+    peer_id: &[u8],
+    port: u16,
+    tracker_url: &str,
+) -> String {
+    // let announce_url = torrent_meta.torrent_file.announce.as_ref().unwrap();
     let info_hash_encoded = url_encode_bytes(torrent_meta.info_hash.as_ref()).unwrap();
     let peer_id_encoded = url_encode_bytes(peer_id).unwrap();
 
     format!(
         "{}?info_hash={}&peer_id={}&port={}&uploaded=0&downloaded=0&compact=1&left={}",
-        announce_url,
+        tracker_url,
         info_hash_encoded,
         peer_id_encoded,
         port,

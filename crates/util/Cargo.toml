@@ -1,0 +1,15 @@
+[package]
+name = "util"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "util"
+path = "src/lib.rs"
+
+[dependencies]
+lazy_static.workspace = true
+serde.workspace = true
+globset.workspace = true
+anyhow.workspace = true
+dirs = "3.0"

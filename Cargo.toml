@@ -1,19 +1,20 @@
 [workspace]
 members = [
-    "crates/thunderstorm-core",
-    "crates/thunderstorm-cli",
+    "crates/thunderstorm",
+    "crates/cli",
+    "crates/util",
 ]
 resolver = "2"
 
 [workspace.dependencies]
-serde = { version = "1.0", features = ["derive"] }
-reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1.33.0", features = ["full"] }
-byteorder = "1.4.3"
-serde_bencode = "0.2.3"
-serde_bytes = "0.11.12"
-rand = "0.8.5"
-sha1_smol = "1.0.0"
-flume = { version = "0.11.0", default-features = false, features = ["async", "select"] }
-indicatif = "0.17.7"
-thunderstorm-core = { path = "crates/thunderstorm-core" }
+uuid = { version = "1.1.2", features = ["v4"] }
+thunderstorm = { path = "crates/thunderstorm" }
+lazy_static = "1.4.0"
+serde = { version = "1.0", features = ["derive"] }
+globset = "0.4"
+anyhow = "1.0.80"
+console-subscriber = "0.2.0"
+tracing = "0.1.40"
+tracing-subscriber =  "0.3.18"
+# tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
