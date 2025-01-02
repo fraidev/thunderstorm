@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Handshake {
     pub pstr: String,
@@ -5,8 +7,9 @@ pub struct Handshake {
     pub peer_id: [u8; 20],
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum HandshakeError {
+    #[error("Protocol length can't be zero")]
     ProtocolLengthCantBeZero,
 }
 

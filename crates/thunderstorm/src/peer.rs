@@ -1,11 +1,9 @@
+use std::net::SocketAddr;
+
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Eq, Hash)]
-pub struct Peer {
-    pub ip: String,
-    pub port: u16,
-}
+pub type PeerAddr = SocketAddr;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BencodeResponse {
@@ -15,7 +13,7 @@ pub struct BencodeResponse {
 }
 
 impl BencodeResponse {
-    pub fn get_peers(self) -> anyhow::Result<Vec<Peer>> {
+    pub fn get_peers(self) -> anyhow::Result<Vec<PeerAddr>> {
         // TODO: This is a bit of a mess
         let peers_bin = self.peers;
         let peer_size = 6;
@@ -42,10 +40,7 @@ impl BencodeResponse {
                 u16::from_be_bytes([peers_bin[offset + ip_size], peers_bin[offset + ip_size + 1]]);
             let ip_array = [ip_bin[0], ip_bin[1], ip_bin[2], ip_bin[3]];
             let ip = std::net::Ipv4Addr::new(ip_array[0], ip_array[1], ip_array[2], ip_array[3]);
-            let peer = Peer {
-                ip: ip.to_string(),
-                port,
-            };
+            let peer = SocketAddr::new(ip.into(), port);
             peers.push(peer);
         }
 
@@ -72,10 +67,7 @@ impl BencodeResponse {
                 u16::from_be_bytes([ip_array[12], ip_array[13]]),
                 u16::from_be_bytes([ip_array[14], ip_array[15]]),
             );
-            let peer = Peer {
-                ip: ip.to_string(),
-                port,
-            };
+            let peer = SocketAddr::new(ip.into(), port);
             peers.push(peer);
         }
 
