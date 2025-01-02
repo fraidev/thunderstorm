@@ -1,35 +1,48 @@
-use dashmap::DashMap;
 use serde_bencode::de;
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
+use tokio::{select, sync::Semaphore};
+use tracing::warn;
 
 use crate::{
-    client::Client,
     file::{self, TorrentMeta},
-    peer::{BencodeResponse, Peer},
+    peer::BencodeResponse,
+    peer_connection::{
+        FullPiece, PeerConnection, PeerHandler, PieceWorkState, TorrentDownloadedState,
+    },
+    peer_state::PeerStates,
+    session::PieceWork,
 };
 
 #[derive(Debug, Clone)]
 pub struct TrackerPeers {
     torrent_meta: TorrentMeta,
     peer_id: [u8; 20],
-    pub sender: flume::Sender<Client>,
-    pub receiver: flume::Receiver<Client>,
-    pub peers: Arc<DashMap<Peer, String>>,
+    pub peer_states: Arc<PeerStates>,
+    pub piece_tx: flume::Sender<FullPiece>,
+    pub piece_rx: flume::Receiver<FullPiece>,
+    pub have_broadcast: Arc<tokio::sync::broadcast::Sender<u32>>,
 }
 
 impl TrackerPeers {
-    pub fn new(torrent_meta: TorrentMeta, _max_size: usize, peer_id: [u8; 20]) -> TrackerPeers {
+    pub fn new(
+        torrent_meta: TorrentMeta,
+        _max_size: usize,
+        peer_id: [u8; 20],
+        peer_states: Arc<PeerStates>,
+        have_broadcast: Arc<tokio::sync::broadcast::Sender<u32>>,
+    ) -> TrackerPeers {
         let (sender, receiver) = flume::unbounded();
         TrackerPeers {
             torrent_meta,
             peer_id,
-            sender,
-            receiver,
-            peers: Arc::new(DashMap::new()),
+            piece_tx: sender,
+            piece_rx: receiver,
+            peer_states,
+            have_broadcast,
         }
     }
 
-    pub async fn connect(&self) {
+    pub async fn connect(&self, pieces_of_work: Vec<PieceWork>) {
         let info_hash = self.torrent_meta.info_hash;
         let peer_id = self.peer_id;
 
@@ -38,64 +51,114 @@ impl TrackerPeers {
             .filter(|t| !t.starts_with("udp://"));
 
         //TODO: support udp trackers
-        for tracker in tcp_trackers {
-            // let tracker = tcp_trackers.unwrap();
-            let sender = self.sender.clone();
-            let peers = self.peers.clone();
-            let torrent_meta = self.torrent_meta.clone();
-            tokio::spawn(async move {
-                loop {
-                    let url = file::build_tracker_url(&torrent_meta, &peer_id, 6881, &tracker);
-                    let sender = sender.clone();
+        let tcp_trackers = tcp_trackers.clone();
+        let torrent_meta = self.torrent_meta.clone();
+        let peer_states = self.peer_states.clone();
+        let piece_tx = self.piece_tx.clone();
+        let have_broadcast = self.have_broadcast.clone();
+        let torrent_downloaded_state = Arc::new(TorrentDownloadedState {
+            semaphore: Semaphore::new(1),
+            pieces: pieces_of_work
+                .into_iter()
+                .map(|pw| PieceWorkState {
+                    piece_work: pw,
+                    chuncks: Mutex::new(vec![]),
+                    downloaded: AtomicBool::new(false),
+                    reserved: Mutex::new(None),
+                })
+                .collect(),
+        });
+        tokio::spawn(async move {
+            loop {
+                for tracker in tcp_trackers.clone() {
+                    let torrent_meta = torrent_meta.clone();
+                    let peer_states = peer_states.clone();
+                    let piece_tx = piece_tx.clone();
+                    let have_broadcast = have_broadcast.clone();
+                    let torrent_downloaded_state = torrent_downloaded_state.clone();
+                    //let pieces_of_work = pieces_of_work.clone();
+                    tokio::spawn(async move {
+                        let url = file::build_tracker_url(&torrent_meta, &peer_id, 6881, &tracker);
 
-                    let request_peers_res_fut = request_peers(&url).await;
-                    if request_peers_res_fut.is_err() {
-                        // return;
-                        continue;
-                    }
+                        let request_peers_res = request_peers(&url).await.unwrap();
+                        let new_peers = request_peers_res.clone().get_peers().unwrap();
+                        let peer_states = peer_states.clone();
 
-                    let request_peers_res = request_peers_res_fut.unwrap();
+                        for peer in new_peers {
+                            let peer_states = peer_states.clone();
+                            //let pieces_of_work = pieces_of_work.clone();
 
-                    let new_peers = request_peers_res.clone().get_peers();
-
-                    if new_peers.is_err() {
-                        continue;
-                    }
-
-                    for peer in new_peers.unwrap() {
-                        let sender = sender.clone();
-
-                        if peers.contains_key(&peer) {
-                            continue;
-                        }
-
-                        let peers = peers.clone();
-                        let peer = peer.clone();
-
-                        tokio::spawn(async move {
-                            //TODO: create peer client with interface that can disconnect it
-                            let client_future =
-                                Client::connect(peer.clone(), info_hash, peer_id, true);
-
-                            let client = tokio::time::timeout(
-                                std::time::Duration::from_secs(5),
-                                client_future,
-                            )
-                            .await;
-                            if let Ok(Ok(client)) = client {
-                                let s = sender.send_async(client).await;
-                                if s.is_ok() {
-                                    peers.insert(peer, String::from("connected"));
-                                }
+                            if peer_states.clone().states.contains_key(&peer) {
+                                continue;
                             }
-                        });
-                    }
-                    //sleep interval
-                    tokio::time::sleep(std::time::Duration::from_millis(request_peers_res.interval))
+
+                            //let peers = peers.clone();
+                            let piece_tx = piece_tx.clone();
+                            let have_broadcast = have_broadcast.clone();
+                            let torrent_downloaded_state = torrent_downloaded_state.clone();
+
+                            tokio::spawn(async move {
+                                let unchoke_notify = tokio::sync::Notify::new();
+                                let (peer_writer_tx, peer_writer_rx) = flume::unbounded();
+
+                                let peer_handler = Arc::new(PeerHandler::new(
+                                    peer,
+                                    unchoke_notify,
+                                    piece_tx.clone(),
+                                    peer_writer_tx.clone(),
+                                    peer_states.clone(),
+                                    //pieces_of_work.clone(),
+                                    torrent_downloaded_state.clone(),
+                                ));
+
+                                let peer_connection = PeerConnection::new(
+                                    peer,
+                                    info_hash,
+                                    peer_id,
+                                    peer_handler.clone(),
+                                );
+
+                                let task_peer_chunk_req_fut =
+                                    peer_handler.task_peer_chunk_requester();
+                                let connect_peer_fut = peer_connection.manage_peer_incoming(
+                                    peer_writer_rx,
+                                    have_broadcast.subscribe(),
+                                );
+
+                                let req = select! {
+                                    r = connect_peer_fut => {
+                                        warn!("1");
+                                        r
+                                    }
+                                    r = task_peer_chunk_req_fut => {
+                                        warn!("2");
+                                        r
+                                    }
+                                };
+
+                                match req {
+                                    Ok(_) => {
+                                        // We disconnected the peer ourselves as we don't need it
+                                        peer_handler.on_peer_died();
+                                    }
+                                    Err(e) => {
+                                        warn!("error managing peer: {:#}", e);
+                                        peer_handler.on_peer_died();
+                                    }
+                                }
+                            });
+                        }
+                        //sleep interval
+                        tokio::time::sleep(std::time::Duration::from_millis(
+                            request_peers_res.interval,
+                        ))
                         .await
+                    });
                 }
-            });
-        }
+
+                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            }
+        });
     }
 }
 

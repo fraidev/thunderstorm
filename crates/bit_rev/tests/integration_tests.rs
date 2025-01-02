@@ -1,8 +1,7 @@
 use std::io::Error;
+use std::net::SocketAddr;
 use std::time::Duration;
-use bit_rev::bitfield::Bitfield;
-use bit_rev::client::Client;
-use bit_rev::peer::Peer;
+use thunderstorm::protocol::Protocol;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -41,8 +40,6 @@ async fn successful_handshake_test() {
 
     let bitfield = vec![0, 0, 0, 3, 5, 0b01010100, 0b01010100];
 
-    let expected_bitfield = vec![0b01010100, 0b01010100];
-
     let info_hash = vec![
         134, 212, 200, 0, 36, 164, 105, 190, 76, 80, 188, 90, 16, 44, 247, 23, 128, 49, 0, 116,
     ]
@@ -66,19 +63,13 @@ async fn successful_handshake_test() {
 
     // Wait for the server to start
     tokio::time::sleep(Duration::from_millis(200)).await;
+    let peer_addr = SocketAddr::new(std::net::Ipv4Addr::new(127, 0, 0, 1).into(), port);
+    let protocol = Protocol::connect(peer_addr.clone(), info_hash, client_peer_id)
+        .await
+        .expect("Failed to connect");
 
-    let peer = Peer {
-        ip: "127.0.0.1".to_string(),
-        port,
-    };
-
-    let client = Client::connect(peer.clone(), info_hash, client_peer_id, false).await;
-    assert!(client.is_ok());
-
-    let client = client.unwrap();
-    assert!(client.choked);
-    assert_eq!(client.protocol.peer_id, client_peer_id);
-    assert_eq!(client.protocol.info_hash, info_hash);
-    assert_eq!(client.protocol.peer, peer);
-    assert_eq!(client.bitfield, Bitfield::new(expected_bitfield))
+    // assert!(protocol.choked);
+    assert_eq!(protocol.peer_id, client_peer_id);
+    assert_eq!(protocol.info_hash, info_hash);
+    assert_eq!(protocol.peer, peer_addr);
 }

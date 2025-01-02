@@ -14,10 +14,11 @@ reqwest = { version = "0.11", features = ["json"] }
 byteorder = "1.4.3"
 serde_bencode = "0.2.3"
 serde_bytes = "0.11.12"
-flume = { version = "0.11.0", default-features = false, features = ["async", "select"] }
+flume.workspace = true
 sha1_smol = "1.0.0"
 anyhow.workspace = true
 dashmap = "5.5.3"
 rand = "0.8.5"
 tracing.workspace = true
 tokio-util = "0.7.10"
+thiserror.workspace = true

@@ -26,6 +26,10 @@ impl Bitfield {
         let new_char = self.bytes[byte_index] | (1 << (7 - offset));
         self.bytes[byte_index] = new_char;
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.bytes.iter().all(|&x| x == 0)
+    }
 }
 
 #[test]
