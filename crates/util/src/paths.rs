@@ -8,17 +8,17 @@ use serde::{Deserialize, Serialize};
 
 lazy_static::lazy_static! {
     pub static ref HOME: PathBuf = dirs::home_dir().expect("failed to determine home directory");
-    pub static ref CONFIG_DIR: PathBuf = HOME.join(".config").join("thunderstorm");
+    pub static ref CONFIG_DIR: PathBuf = HOME.join(".config").join("bit_rev");
     pub static ref CONVERSATIONS_DIR: PathBuf = CONFIG_DIR.join("conversations");
     pub static ref EMBEDDINGS_DIR: PathBuf = CONFIG_DIR.join("embeddings");
     pub static ref THEMES_DIR: PathBuf = CONFIG_DIR.join("themes");
     pub static ref LOGS_DIR: PathBuf = if cfg!(target_os = "macos") {
-        HOME.join("Library/Logs/Thunderstorm")
+        HOME.join("Library/Logs/BitRev")
     } else {
         CONFIG_DIR.join("logs")
     };
     pub static ref SUPPORT_DIR: PathBuf = if cfg!(target_os = "macos") {
-        HOME.join("Library/Application Support/Thunderstorm")
+        HOME.join("Library/Application Support/BitRev")
     } else {
         CONFIG_DIR.clone()
     };
@@ -36,8 +36,8 @@ lazy_static::lazy_static! {
     };
     pub static ref SETTINGS: PathBuf = CONFIG_DIR.join("settings.json");
     pub static ref TASKS: PathBuf = CONFIG_DIR.join("tasks.json");
-    pub static ref LOG: PathBuf = LOGS_DIR.join("Thunderstorm.log");
-    pub static ref OLD_LOG: PathBuf = LOGS_DIR.join("Thunderstorm.log.old");
+    pub static ref LOG: PathBuf = LOGS_DIR.join("BitRev.log");
+    pub static ref OLD_LOG: PathBuf = LOGS_DIR.join("BitRev.log.old");
 }
 
 pub trait PathExt {

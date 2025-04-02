@@ -1,6 +1,6 @@
-# Thunderstorm
+# BitRev
 
-Thunderstorm is a BitTorrent client written entirely in Rust.
+BitRev is a BitTorrent client written entirely in Rust.
 This Project it's a rewrite of [tornado](https://github.com/fraidev/tornado) in Rust.
 
 ## Setup

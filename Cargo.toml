@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/thunderstorm",
+    "crates/bit_rev",
     "crates/cli",
     "crates/util",
 ]
@@ -9,7 +9,7 @@ resolver = "2"
 [workspace.dependencies]
 tokio = { version = "1.33.0", features = ["full"] }
 uuid = { version = "1.1.2", features = ["v4"] }
-thunderstorm = { path = "crates/thunderstorm" }
+bit_rev = { path = "crates/bit_rev" }
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 globset = "0.4"

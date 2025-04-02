@@ -1,8 +1,8 @@
 use std::io::Error;
 use std::time::Duration;
-use thunderstorm::bitfield::Bitfield;
-use thunderstorm::client::Client;
-use thunderstorm::peer::Peer;
+use bit_rev::bitfield::Bitfield;
+use bit_rev::client::Client;
+use bit_rev::peer::Peer;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 

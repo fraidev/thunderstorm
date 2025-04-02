@@ -1,10 +1,10 @@
 [package]
-name = "thunderstorm"
+name = "bit_rev"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "thunderstorm"
+name = "bit_rev"
 path = "src/lib.rs"
 
 [dependencies]

@@ -2,7 +2,7 @@ use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use std::{cmp::min, collections::HashSet, fmt::Write};
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use thunderstorm::{
+use bit_rev::{
     download::Download,
     file::{self, TorrentMeta},
     torrent::Torrent,
