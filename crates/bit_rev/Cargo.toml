@@ -10,15 +10,15 @@ path = "src/lib.rs"
 [dependencies]
 serde.workspace = true
 tokio.workspace = true
-reqwest = { version = "0.11", features = ["json"] }
-byteorder = "1.4.3"
-serde_bencode = "0.2.3"
-serde_bytes = "0.11.12"
 flume.workspace = true
-sha1_smol = "1.0.0"
 anyhow.workspace = true
-dashmap = "5.5.3"
-rand = "0.8.5"
 tracing.workspace = true
-tokio-util = "0.7.10"
 thiserror.workspace = true
+reqwest.workspace = true
+byteorder.workspace = true 
+serde_bencode.workspace = true
+serde_bytes.workspace = true
+sha1_smol.workspace = true
+dashmap.workspace = true
+rand.workspace = true
+tokio-util.workspace = true
