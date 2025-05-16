@@ -1,7 +1,7 @@
 use std::io::Error;
 use std::net::SocketAddr;
 use std::time::Duration;
-use thunderstorm::protocol::Protocol;
+use bit_rev::protocol::Protocol;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 

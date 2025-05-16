@@ -12,7 +12,7 @@ use tokio::{
     sync::{Notify, Semaphore},
     time::timeout,
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, trace};
 
 use crate::{
     bitfield::Bitfield,
@@ -294,10 +294,10 @@ impl PeerHandler {
             move |h: &PeerHandler, new_value: bool| -> anyhow::Result<()> {
                 if new_value != current {
                     h.peer_writer_tx.send(if new_value {
-                        //warn!("sending interested");
+                        trace!("sending interested");
                         WriterRequest::Message(Message::Interested)
                     } else {
-                        //warn!("sending not interested");
+                        trace!("sending not interested");
                         WriterRequest::Message(Message::NotInterested)
                     })?;
                     current = new_value;
@@ -309,38 +309,17 @@ impl PeerHandler {
         loop {
             update_interest(self, true)?;
 
-            info!("waiting for unchoke");
+            trace!("waiting for unchoke");
 
             if self.chocked.load(std::sync::atomic::Ordering::Relaxed) {
                 self.unchoke_notify.notified().await;
             }
-            info!("unchoke received");
+            trace!("unchoke received");
 
-            //let piece = match self.pw_rx.recv_async().await {
-            //    Ok(piece) => piece,
-            //    Err(flume::RecvError::Disconnected) => {
-            //        sleep(Duration::from_secs(1)).await;
-            //        continue;
-            //    }
-            //};
             if self.torrent_downloaded_state.is_complete() {
                 trace!("TORRENT IS COMPLETE");
                 return Ok(());
             }
-
-            //let missing_pieces = self.torrent_downloaded_state.missing_pieces();
-            //if !missing_pieces.is_empty() {
-            //    warn!("missing pieces: {:?}", missing_pieces);
-            //} else {
-            //    warn!("no missing pieces");
-            //}
-            //
-            //let not_reserved = self.torrent_downloaded_state.reserved_and_not_downloaded();
-            //if !not_reserved.is_empty() {
-            //    warn!("reserved not donwn: {:?}", not_reserved);
-            //} else {
-            //    warn!("no reserved not downloaded");
-            //}
 
             let piece = self
                 .torrent_downloaded_state
@@ -371,10 +350,10 @@ impl PeerHandler {
 
                 let r = message::format_request(piece.index, offset, block_size);
 
-                //warn!(
-                //    "requesting piece index {} start {} length {}",
-                //    piece.index, offset, block_size
-                //);
+                debug!(
+                    "requesting piece index {} start {} length {}",
+                    piece.index, offset, block_size
+                );
                 if self.peer_writer_tx.send(WriterRequest::Message(r)).is_err() {
                     error!("error sending request to peer");
                     return Ok(());
@@ -385,30 +364,24 @@ impl PeerHandler {
     }
 
     fn on_received_message(&self, message: crate::message::Message) -> Result<(), anyhow::Error> {
-        //if !matches!(&message, Message::Bitfield(..))
-        //    && !self.first_message_received.swap(true, Ordering::Relaxed)
-        //{
-        //    self.on_bitfield_notify.notify_waiters();
-        //}
-
         match message {
             Message::Choke => {
-                warn!("peer choked us");
+                debug!("peer choked us");
                 self.chocked
                     .store(true, std::sync::atomic::Ordering::Relaxed);
             }
             Message::Unchoke => {
-                warn!("peer unchoked us");
+                debug!("peer unchoked us");
                 self.chocked
                     .store(false, std::sync::atomic::Ordering::Relaxed);
                 self.unchoke_notify.notify_waiters();
                 self.requests_sem.add_permits(128);
             }
             Message::Interested => {
-                warn!("peer is interested");
+                debug!("peer is interested");
             }
             Message::NotInterested => {
-                warn!("peer is not interested");
+                debug!("peer is not interested");
             }
             Message::Have(h) => {
                 let p_state = self.peers_state.states.get_mut(&self.peer);
@@ -419,7 +392,7 @@ impl PeerHandler {
                 self.on_bitfield_notify.notify_waiters();
             }
             Message::Bitfield(vec) => {
-                warn!("peer sent bitfield");
+                debug!("peer sent bitfield");
                 let p_state = self.peers_state.states.get_mut(&self.peer);
 
                 if p_state.is_none() {
@@ -437,7 +410,7 @@ impl PeerHandler {
                 self.on_bitfield_notify.notify_waiters();
             }
             Message::Request(_) => {
-                warn!("peer requested piece, not implemented");
+                debug!("peer requested piece, not implemented");
             }
             Message::Piece(piece_chunk) => {
                 self.downloaded
@@ -481,11 +454,11 @@ impl PeerHandler {
                 );
             }
             Message::Cancel(_) => {
-                warn!("peer canceled request");
+                debug!("peer canceled request");
                 //trace!("peer canceled request");
             }
             message => {
-                warn!("received unsupported message {:?}, ignoring", message);
+                debug!("received unsupported message {:?}, ignoring", message);
             }
         }
 
@@ -571,7 +544,7 @@ impl PeerConnection {
                                     anyhow::bail!("closing writer, channel closed");
                                 }
                                 Err(_) => {
-                                    warn!("timeout reading, let's keep alive");
+                                    debug!("timeout reading, let's keep alive");
                                     WriterRequest::Message(Message::KeepAlive)
                                 },
                             }
@@ -584,14 +557,14 @@ impl PeerConnection {
 
                     match timeout(Duration::from_secs(10), write.write_all(&buf)).await {
                         Ok(Ok(_)) => {
-                            //warn!("sent message");
+                            //debug!("sent message");
                         }
                         Ok(Err(e)) => {
-                            warn!("error writing to peer: {:?}", e);
+                            debug!("error writing to peer: {:?}", e);
                             break;
                         }
                         Err(e) => {
-                            warn!("timeout writing to peer: {:?}", e);
+                            debug!("timeout writing to peer: {:?}", e);
                             break;
                         }
                     }
@@ -613,16 +586,16 @@ impl PeerConnection {
                     Ok(Ok(Some(msg))) => match self.handler.on_received_message(msg) {
                         Ok(_) => {}
                         Err(e) => {
-                            warn!("error processing message: {:?}", e);
+                            debug!("error processing message: {:?}", e);
                             break;
                         }
                     },
                     Ok(Err(e)) => {
-                        warn!("error reading from peer: {:?}", e);
+                        debug!("error reading from peer: {:?}", e);
                         break;
                     }
                     Err(e) => {
-                        warn!("timeout reading from peer: {:?}", e);
+                        debug!("timeout reading from peer: {:?}", e);
                         break;
                     }
                 }

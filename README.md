@@ -8,7 +8,7 @@ This Project it's a rewrite of [tornado](https://github.com/fraidev/tornado) in 
 Exemple of how to download a debian iso:
 
 ```bash
-cargo run --release --bin cli debian-12.5.0-amd64-netinst.iso.torrent
+cargo run --release -- samples/debian-12.10.0-amd64-netinst.iso.torrent
 ```
 
 Tests:
@@ -20,8 +20,8 @@ cargo test
 Check sha256sum of the debian iso:
 
 ```bash
-openssl dgst -sha256 debian-12.5.0-amd64-netinst.iso
+openssl dgst -sha256 debian-12.10.0-amd64-netinst.iso
 ```
 
-Should be [013f5b44670d81280b5b1bc02455842b250df2f0c6763398feb69af1a805a14f](https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/SHA256SUMS) for this example.
+Should be [ee8d8579128977d7dc39d48f43aec5ab06b7f09e1f40a9d98f2a9d149221704a](https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/SHA256SUMS) for this example.
 

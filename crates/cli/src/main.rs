@@ -8,7 +8,7 @@ use tokio::{
     fs::File,
     io::{AsyncSeekExt, AsyncWriteExt},
 };
-use tracing::{trace, warn};
+use tracing::trace;
 
 use bit_rev::{
     file::{self, TorrentMeta},
@@ -39,7 +39,7 @@ pub async fn download_file(torrent_meta: TorrentMeta, out_file: Option<String>) 
 
     let torrent = Torrent::new(&torrent_meta.clone());
 
-    let peer_states = Arc::new(thunderstorm::peer_state::PeerStates::new());
+    let peer_states = Arc::new(bit_rev::peer_state::PeerStates::new());
     let (have_broadcast, _) = tokio::sync::broadcast::channel(128);
     let have_broadcast = Arc::new(have_broadcast);
 
@@ -75,7 +75,6 @@ pub async fn download_file(torrent_meta: TorrentMeta, out_file: Option<String>) 
         None => torrent_meta.clone().torrent_file.info.name.clone(),
     };
     let mut file = File::create(out_filename).await.unwrap();
-    warn!("Total size: {}", total_size);
 
     // File
     let total_downloaded = Arc::new(AtomicU64::new(0));

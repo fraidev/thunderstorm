@@ -1,7 +1,7 @@
 use serde_bencode::de;
 use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use tokio::{select, sync::Semaphore};
-use tracing::warn;
+use tracing::debug;
 
 use crate::{
     file::{self, TorrentMeta},
@@ -127,11 +127,11 @@ impl TrackerPeers {
 
                                 let req = select! {
                                     r = connect_peer_fut => {
-                                        warn!("1");
+                                        debug!("connect_peer_fut: {:#?}", r);
                                         r
                                     }
                                     r = task_peer_chunk_req_fut => {
-                                        warn!("2");
+                                        debug!("task_peer_chunk_req_fut: {:#?}", r);
                                         r
                                     }
                                 };
@@ -142,7 +142,7 @@ impl TrackerPeers {
                                         peer_handler.on_peer_died();
                                     }
                                     Err(e) => {
-                                        warn!("error managing peer: {:#}", e);
+                                        debug!("error managing peer: {:#}", e);
                                         peer_handler.on_peer_died();
                                     }
                                 }
