@@ -39,7 +39,7 @@ pub async fn download_file(torrent_meta: TorrentMeta, out_file: Option<String>) 
 
     let torrent = Torrent::new(&torrent_meta.clone());
 
-    let peer_states = Arc::new(bit_rev::peer_state::PeerStates::new());
+    let peer_states = Arc::new(bit_rev::peer_state::PeerStates::default());
     let (have_broadcast, _) = tokio::sync::broadcast::channel(128);
     let have_broadcast = Arc::new(have_broadcast);
 

@@ -113,7 +113,7 @@ impl<T: AsRef<Path>> PathExt for T {
             return extension.to_str();
         }
 
-        self.as_ref().file_name()?.to_str()?.split('.').last()
+        self.as_ref().file_name()?.to_str()?.split('.').next_back()
     }
 }
 
