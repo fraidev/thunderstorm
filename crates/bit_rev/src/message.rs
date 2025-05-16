@@ -274,93 +274,90 @@ pub fn read(length_buf: &[u8], message_buf: &[u8]) -> Option<Message> {
     }
 }
 
-//#[cfg(test)]
-//mod tests {
-//    use super::*;
-//
-//    #[test]
-//    fn format_request_test() {
-//        let expected = vec![
-//            0x00, 0x00, 0x00, 0x04, // Index
-//            0x00, 0x00, 0x02, 0x37, // Begin
-//            0x00, 0x00, 0x10, 0xe1, // Length
-//        ];
-//        let index = 4;
-//        let start = 567;
-//        let length = 4321;
-//        let msg = format_request(index, start, length);
-//        assert_eq!(msg.payload, expected);
-//    }
-//
-//    #[test]
-//    fn format_have_test() {
-//        let expected = vec![
-//            0x00, 0x00, 0x00, 0x04, // Index
-//        ];
-//        let index = 4;
-//        let msg = format_have(index);
-//        assert_eq!(msg.payload, expected);
-//    }
-//
-//    #[test]
-//    fn parse_piece_test() {
-//        let buf = &mut [0u8; 10];
-//        let msg = Message {
-//            id: MessageId::MsgPiece,
-//            payload: vec![
-//                0x00, 0x00, 0x00, 0x04, // Index
-//                0x00, 0x00, 0x00, 0x02, // Begin
-//                0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, // Length
-//            ],
-//        };
-//
-//        let expected_buf = vec![0x00, 0x00, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x00];
-//
-//        let expected_result = parse_piece(buf, msg);
-//
-//        assert_eq!(
-//            expected_result,
-//            Ok(Piece {
-//                index: 4,
-//                start: 2,
-//                length: 6,
-//            })
-//        );
-//        assert_eq!(buf, expected_buf.as_slice());
-//    }
-//
-//    #[test]
-//    fn parse_have_test() {
-//        let msg = Message {
-//            id: MessageId::MsgHave,
-//            payload: vec![0x00, 0x00, 0x00, 0x04],
-//        };
-//        let expected_result = parse_have(msg);
-//        assert_eq!(expected_result, Ok(4));
-//    }
-//
-//    #[test]
-//    fn serialize_test() {
-//        let msg = Message {
-//            id: MessageId::MsgPiece,
-//            payload: vec![0x00, 0x00, 0x00, 0x04],
-//        };
-//        let expected = vec![
-//            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x07, 0x00, 0x00, 0x00, 0x04,
-//        ];
-//        let result = serialize(Some(msg));
-//        assert_eq!(result, expected);
-//    }
-//
-//    #[test]
-//    fn read_test() {
-//        let length_buf = vec![0x00, 0x00, 0x00, 0x05];
-//        let message_buf = vec![0x04, 0x00, 0x00, 0x00, 0x04];
-//        let expected = Message {
-//            id: MessageId::MsgHave,
-//            payload: vec![0x00, 0x00, 0x00, 0x04],
-//        };
-//        let result = read(&length_buf, &message_buf);
-//        assert_eq!(result, Some(expected));
-//    }
-//}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_request_test() {
+        let expected = vec![
+            0x00, 0x00, 0x00, 0x04, // Index
+            0x00, 0x00, 0x02, 0x37, // Begin
+            0x00, 0x00, 0x10, 0xe1, // Length
+        ];
+        let index = 4;
+        let start = 567;
+        let length = 4321;
+        let msg = format_request(index, start, length);
+
+        assert!(matches!(msg, Message::Request(payload) if payload == expected));
+    }
+
+    #[test]
+    fn format_have_test() {
+        let index = 4;
+        let msg = format_have(index);
+
+        assert!(matches!(msg, Message::Have(index) if index == 4));
+    }
+
+    // #[test]
+    // fn parse_piece_test() {
+    //     let buf = &mut [0u8; 10];
+    //     let msg = Message {
+    //         id: MessageId::MsgPiece,
+    //         payload: vec![
+    //             0x00, 0x00, 0x00, 0x04, // Index
+    //             0x00, 0x00, 0x00, 0x02, // Begin
+    //             0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, // Length
+    //         ],
+    //     };
+    //
+    //     let expected_buf = vec![0x00, 0x00, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x00];
+    //
+    //     let expected_result = parse_piece(buf, msg);
+    //
+    //     assert_eq!(
+    //         expected_result,
+    //         Ok(Piece {
+    //             index: 4,
+    //             start: 2,
+    //             length: 6,
+    //         })
+    //     );
+    //     assert_eq!(buf, expected_buf.as_slice());
+    // }
+
+    // #[test]
+    // fn parse_have_test() {
+    //     let msg = Message::Have(4);
+    //     let expected_result = parse_have(msg);
+    //     assert_eq!(expected_result, Ok(4));
+    // }
+
+    #[test]
+    fn serialize_test() {
+        let msg = Message::Piece(PieceChunk {
+            index: 4,
+            start: 0,
+            length: 4,
+            data: vec![0x00, 0x00, 0x00, 0x04],
+        });
+        let expected = vec![
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d, 0x07, 0x00, 0x00, 0x00, 0x04, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+        ];
+        let result = serialize(Some(msg));
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn read_test() {
+        let length_buf = vec![0x00, 0x00, 0x00, 0x05];
+        let message_buf = vec![0x04, 0x00, 0x00, 0x00, 0x04];
+        let expected = Message::Have(4);
+
+        let result = read(&length_buf, &message_buf);
+        assert_eq!(result, Some(expected));
+    }
+}
